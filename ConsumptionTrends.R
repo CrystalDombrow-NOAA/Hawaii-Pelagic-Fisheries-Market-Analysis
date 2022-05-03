@@ -142,6 +142,7 @@ Cons_Figure <- ggplot(Trend_Cons, aes(x = YR, y = Cons / 1000000,
         panel.grid.major.x = element_blank(),
         panel.grid.major.y = element_line(size = .1, color = "black"),
         panel.grid.minor.y = element_line(size = .1, color = "black")) +
+  coord_cartesian(ylim = c(0, 50)) +
   scale_x_continuous(breaks = seq(2008, 2019, 1)) +
   scale_y_continuous(expand = c(0, 0)) +
   scale_fill_manual(labels = c("Hawai`i", "Continental U.S."), 
@@ -155,7 +156,7 @@ save_plot("Figures/Cons_Share_Stacked.png", Cons_Figure,
 
 
 #---------------
-#Figures 10, 19, 28. Annual share of domestic [spp.] consumption on the 
+#Figures 10, 19, 28. Annual share of domestic [spp.] consumption in the 
 #continental U.S. 
 #---------------
 #Create figure.
@@ -168,8 +169,8 @@ Mainland_Imp_Share_Figure <- ggplot(Scale_ML_Imp, aes(x = YR, y = share,
   scale_y_continuous(expand = c(0, 0), breaks = seq(round(min(Scale_ML_Imp$share), 
                                                           -1),
                                   round(max(Scale_ML_Imp$share), -1), 20)) +
-  scale_fill_manual(labels = c("Total share \n imported", 
-                               "Total share \n landed"),
+  scale_fill_manual(labels = c("Imports", 
+                               "Landings"),
                     values = colBrew2) +
   guides(fill = guide_legend(title = NULL)) +
   theme(panel.background = element_blank(),
@@ -197,8 +198,8 @@ HI_Imp_Share_Figure <- ggplot(Scale_HI_Imp,
   scale_y_continuous(expand = c(0, 0), breaks = seq(round(min(Scale_HI_Imp$share), 
                                                           -1), 
                                   round(max(Scale_HI_Imp$share), -1), 20)) +
-  scale_fill_manual(labels = c("Total share \n imported", 
-                               "Total share \n landed"), 
+  scale_fill_manual(labels = c("Imports", 
+                               "Landings"), 
                     values = colBrew2) +
   guides(fill = guide_legend(title = NULL)) +
   theme(panel.background = element_blank(),

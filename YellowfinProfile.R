@@ -4,6 +4,13 @@ rm(list = ls())
 source("Rscripts/SourceFiles/Installations.R")
 source("Rscripts/SourceFiles/ColorFunctionForFigures.R")
 
+#load libraries
+library(RColorBrewer)
+library(scales)
+library(cowplot)
+library(ggpubr)
+library(dplyr)
+
 
 #--------------------
 #Table 15. Average annual supply and value of yellowfin tuna, 2008-2019.
@@ -15,7 +22,7 @@ US_Summary_fun("YELLOWFIN TUNA", "YELLOWFIN")
 #--------------------
 #Figure 17. Total domestic consumption of yellowfin tuna in Hawai'i and the continental U.S.
 #Figure 18. Annual share of local yellowfin tuna consumption in Hawai'i.
-#Figure 19. Annual share of domestic yellowfin tuna consumption on the continental U.S.
+#Figure 19. Annual share of domestic yellowfin tuna consumption in the continental U.S.
 #--------------------
 #Not reproduced in manuscript, but calculations used in text & final function
 #used for calculations in ConsumptionTrends.R.
@@ -29,8 +36,6 @@ source("Rscripts/SourceFiles/ConsumptionTrends.r")
 #--------------------
 #Figure 20. Average volume and value of yellowfin tuna landed in Hawai'i. 
 #--------------------
-library(scales)
-
 #Create object for graph.
 YFtunaProdVolVal <- Landat %>%
   filter(Species == "Yellowfin tuna") %>%
@@ -69,31 +74,36 @@ save_plot("Figures/YFtuna_volval_HIprod.png",
 
 
 #--------------------
-#Figure 21. Monthly average ex-vessel prices (per pound) for Hawai'i yellowfin 
-#tuna landings.  
+#Figure 21. Annual and monthly average ex-vessel prices (per pound) for Hawai??i 
+#yellowfin tuna landings, 2008-2019.  
 #--------------------
-scaleFUN <- function(x) sprintf("$%.2f", x)
-library(scales)
 require(lubridate)
+
+scaleFUN <- function(x) sprintf("$%.2f", x)
 
 #Create object for graph.
 start <- ymd("2008/01/01")
 
+#------------
+#MONTHLY
+
 #Create another object for graph.
-MonthlyPriceYF <- Monthdat %>%
+MonthlyPriceYFT <- Monthdat %>%
   mutate(date = start + months(0:143), year = year(date), 
          month = month(date, label = T, abbr = T)) %>%
-  select(date, year, month, Yellowfin.tuna) %>%
-  group_by(date, year, month)
+  select(year, month, Yellowfin.tuna) %>%
+  group_by(month) %>%
+  mutate(monthly.avg = mean(Yellowfin.tuna))
 
 #Create graph.
-ExVessPrice_Col <- ggplot(MonthlyPriceYF, aes(x = date, y = Yellowfin.tuna, 
-                                              group = 1)) +
+MonthlyPriceYFT_plot <- ggplot(MonthlyPriceYFT, 
+                               aes(x = month, y = monthly.avg, group = 1)) +
   geom_line(stat = "identity") +
   geom_point() +
+  coord_cartesian(ylim = c(0.00, 5.00)) +
   scale_y_continuous(labels = scaleFUN) +
-  labs(x = "Year", y = "Price") +
-  scale_x_date(date_breaks = "1 years", date_labels = "%Y", expand = c(0, 0)) +
+  labs(x = "Month", y = "Price") +
+  ggtitle("Monthly")+
   theme_classic() +
   theme(legend.position = "bottom", 
         legend.title = element_blank(),
@@ -101,15 +111,48 @@ ExVessPrice_Col <- ggplot(MonthlyPriceYF, aes(x = date, y = Yellowfin.tuna,
                             family = "serif"), 
         axis.text.x = element_text(angle = 45, hjust = 1))
 
+
+#-----------------------
+#ANNUAL
+
+#Create object for figure.
+AnnualPriceYFT <- Monthdat %>%
+  mutate(date = start + months(0:143), year = year(date), 
+         month = month(date, label = T, abbr = T)) %>%
+  select(year, Yellowfin.tuna) %>%
+  group_by(year) %>%
+  mutate(annual.avg = mean(Yellowfin.tuna))
+
+#Create figure.
+AnnualPriceYFT_plot <- ggplot(AnnualPriceYFT, 
+                             aes(x = year, y = annual.avg, group = 1)) +
+  geom_line(stat = "identity") +
+  geom_point() +
+  coord_cartesian(ylim = c(0.00, 5.00)) +
+  scale_x_continuous(breaks = seq(2008, 2019, 1)) +
+  scale_y_continuous(labels = scaleFUN) +
+  labs(x = "Year", y = "Price") +
+  ggtitle("Annual")+
+  theme_classic() +
+  theme(legend.position = "bottom", 
+        legend.title = element_blank(),
+        text = element_text(size = 12, family = "serif"), 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+#put plots side by side
+ExVessPrice_YFT <- ggarrange(AnnualPriceYFT_plot, MonthlyPriceYFT_plot, 
+                            ncol = 2, nrow = 1)
+
+
 #Save figure.
-save_plot("Figures/ExVessPrice_Col_YF.png", ExVessPrice_Col, 
-          base_aspect_ratio = 2)
+save_plot("Figures/ExVessPrice_YFT.png", ExVessPrice_YFT, 
+          base_aspect_ratio = 3)
 
 
 #--------------------
 #Figure 22. Total volume and value of yellowfin tuna exports from Hawai'i. 
 #--------------------
-library(cowplot)
 WesColChange()
 
 #Create object for graph.
@@ -142,22 +185,20 @@ Export_Plot <- ggplot(YFtuna_Trade_Total_E) +
   coord_cartesian(ylim = c(0, 200000)) +
   scale_fill_manual(labels = c("Volume"), values = wescol5[c(3)]) +
   scale_color_manual(labels = c("Value"), values = wescol5[c(4)]) +
-  ggtitle("Exports") +
-  theme(legend.position = "bottom", 
+  theme(legend.position = "right", 
         legend.title = element_blank(), 
         legend.justification = "center", 
         text = element_text(size = 12, family = "serif"), 
         axis.text.x = element_text(angle = 45, hjust = 1))
 
 #Save figure.
-save_plot("Figures/YellowfinExports.png", Export_Plot, base_aspect_ratio = 1.15)
+save_plot("Figures/YellowfinExports.png", Export_Plot, base_aspect_ratio = 2)
 
 
 
 #--------------------
 #Figure 24. Total volume and value of yellowfin tuna imports to Hawai'i. 
 #--------------------
-library(cowplot)
 WesColChange()
 
 #Create object for graph.
@@ -190,23 +231,19 @@ Import_Plot <- ggplot(YFtuna_Trade_Total_I) +
   coord_cartesian(ylim = c(0, 1200000)) +
   scale_fill_manual(labels = c("Volume"), values = wescol5[c(3)]) +
   scale_color_manual(labels = c("Value"), values = wescol5[c(4)]) +
-  ggtitle("Imports") +
-  theme(legend.position = "bottom", 
+  theme(legend.position = "right", 
         legend.title = element_blank(), 
         legend.justification = "center", 
         text = element_text(size = 12, family = "serif"), 
         axis.text.x = element_text(angle = 45, hjust = 1))
 
 #Save figure.
-save_plot("Figures/YellowfinImports.png", Import_Plot, base_aspect_ratio = 1.15)
+save_plot("Figures/YellowfinImports.png", Import_Plot, base_aspect_ratio = 2)
 
 
 #--------------------
 #Figure 23. Total yellowfin tuna export volume from Hawai'i. 
 #--------------------
-library(scales)
-library(wesanderson)
-
 #Create object for graph.
 YFtuna_Exp_Form <- dat %>%
   filter(Species == "YELLOWFIN TUNA") %>%
@@ -253,7 +290,7 @@ YFtuna_ExpVol_Cnty <- ggplot(YFtuna_Exp_Form) +
   scale_y_continuous(expand = c(0, 0), labels = comma) +
   scale_x_continuous(breaks = seq(2008, 2019, 1)) +
   labs(x = "Year", y = "Total Pounds Exported (lb.)") +
-  scale_fill_manual(values = wes_palette("Zissou1", 6, type = "continuous")) +
+  scale_fill_brewer(palette = "Blues") +
   theme(legend.position = "right",
         legend.title = element_blank(),
         text = element_text(size = 12, family = "serif"),
@@ -267,9 +304,6 @@ save_plot("Figures/YFtuna_ExpVol_Cnty.png", YFtuna_ExpVol_Cnty,
 #--------------------
 #Figure 25. Total yellowfin tuna import volume to Hawai'i.  
 #--------------------
-library(scales)
-library(wesanderson)
-
 #Create object for graph.
 YFtuna_Imp_Form <- dat %>%
   filter(Species == "YELLOWFIN TUNA") %>%
@@ -313,6 +347,10 @@ YFtuna_Imp_Top_Form <- YFtuna_Imp_Form %>%
   group_by(YR, FormDesc, Country) %>%
   summarize(pounds = sum(pounds), value = sum(value), countryannvolshare = sum(countryannvolshare))
 
+#Expand color palette for bar chart
+cols <- 10
+extracolors.yftimp <- colorRampPalette(brewer.pal(8, "Blues"))(cols)
+
 #Create graph.
 YFtuna_ImpVol_Form <- ggplot(YFtuna_Imp_Top_Form) +
   geom_bar(aes(y = pounds, x = YR, fill = Country),
@@ -326,7 +364,7 @@ YFtuna_ImpVol_Form <- ggplot(YFtuna_Imp_Top_Form) +
   coord_cartesian(ylim = c(0, 750000)) +
   scale_y_continuous(expand = c(0, 0), labels = comma) +
   scale_x_continuous(breaks = seq(2008, 2019, 1)) +
-  scale_fill_manual(values = wes_palette("Zissou1", 10, type = "continuous")) +
+  scale_fill_manual(values = extracolors.yftimp) +
   labs(x = "Year", y = "Total Pounds Imported (lb.)") +
   theme(legend.position = "right", 
         legend.title = element_blank(),
@@ -373,7 +411,7 @@ write.csv(YF_Fresh_Imp_Table, "tables/YF_Imp_Fresh.csv")
 
 
 #--------------------
-#Table 18. Total frozen yellowfin tuna imports to Hawai'i.
+#Table 19. Total frozen yellowfin tuna imports to Hawai'i.
 #--------------------
 #Uses objects created for Table 17.
 

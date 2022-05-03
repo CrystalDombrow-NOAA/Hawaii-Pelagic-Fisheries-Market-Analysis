@@ -7,6 +7,16 @@ getwd()
 source("Rscripts/SourceFiles/Installations.R")
 source("Rscripts/SourceFiles/ColorFunctionForFigures.R")
 
+
+#Load libraries
+library(scales)
+library(tidyverse)
+library(cowplot)
+library(nmfspalette)
+library(RColorBrewer)
+library(wesanderson)
+
+
 #Create objects to be used in subsequent figures and tables.
 Pelagic_Species_Names <- c("tuna|marlin|swordfish|dolphinfish|mahimahi|moonfish|opah|monchong|pomfret|wahoo|spearfish|sailfish|thresher|squid|shortfin mako|escolar|oceanic whitetip|blue shark")
 
@@ -19,9 +29,6 @@ TradeSpecies <- c("tuna|marlin|swordfish|dolphinfish|mahimahi|moonfish|opah|monc
 #-------------------- 
 #Figure 3: Share of top Hawai'i landings sold, 2019. 
 #--------------------
-library(scales)
-library(wesanderson)
-
 #Create objects for bar chart.
 TopLandedLbs <- Landat %>%
   filter(YR == 2019) %>%
@@ -53,6 +60,9 @@ TopLandedLbs <- Landat %>%
 #Reorder object.
 TopLandedLbs$Species <- reorder(TopLandedLbs$Species, -TopLandedLbs$value)
 
+#Expand color palette for bar chart
+cols <- 10
+extracolors.top10 <- colorRampPalette(brewer.pal(8, "Blues"))(cols)
 
 #Create bar chart.
 TopLandedSpecies_HI <- ggplot(TopLandedLbs, aes(x = Species, y = value, 
@@ -65,7 +75,8 @@ TopLandedSpecies_HI <- ggplot(TopLandedLbs, aes(x = Species, y = value,
             vjust = -.5) +
   ylab("Percent") +
   xlab("Species") +
-  scale_fill_manual(values = wes_palette("Zissou1", 10, type = "continuous")) +
+  #scale_fill_manual(values = wes_palette("Zissou1", 10, type = "continuous")) +
+  scale_fill_manual(values = rev(extracolors.top10)) +
   theme(panel.background = element_blank(),
         axis.line = element_line(),
         panel.grid.major.x = element_blank(),
@@ -81,10 +92,8 @@ save_plot("Figures/TopLandedSpecies_VolValbar_HI.png", TopLandedSpecies_HI,
 
 
 #--------------------
-# Table 1: Total volume sold (in thousands of lbs.) of Hawai'i landings.
+# Table 1: Total volume sold (in thousands of lb) of Hawai'i landings.
 #--------------------
-library(wesanderson)
-
 #Create table.
 Annual_Landings_bySpecies <- Landat %>%
   filter(YR > 2007) %>%
@@ -116,7 +125,10 @@ write.csv(Annual_Landings_bySpecies, "Tables/Annual_Landings_bySpecies.csv")
 
 
 #--------------------
-# Figure 2: Total volume and value of Hawai'i pelagic landings.
+# Figure 2: Total volume sold and value of Hawai'i pelagic landings.
+
+#Bigeye, yellowfin, opah, swordfish, wahoo, blue marlin, mahimahi, pomfret, 
+#striped marlin, skipjack tuna
 #--------------------
 #Create objects for ggplot
 Annual_Landings_bySpecies_forplot <- Landat %>%
@@ -132,29 +144,32 @@ Annual_Landings_bySpecies_forplot <- Landat %>%
   group_by(YR, Species) %>%
   mutate(Species = if_else(grepl("swordfish", Species, ignore.case = TRUE),
                            "Swordfish", Species)) %>%
+  #Create other category to group species of lowest volume for visual legibility
+  mutate(Species = recode(Species,
+                          "Albacore tuna" = "Other",
+                          "Indo-Pacific sailfish" = "Other",
+                          "Kawakawa, Little tuna" = "Other",
+                          "Oilfish, Escolar (Spanish)" = "Other",
+                          "Shortbill/Shortnose spearfish" = "Other",
+                          "Shortfin mako shark" = "Other",
+                          "Squids (unspecified)" = "Other",
+                          "Thresher shark (unspecified)" = "Other",
+                          "Pacific/Giant black marlin, Silver marlin"
+                          = "Other")) %>%
   summarize(Volume = sum(Sold) / 1000000, value = sum(Value) / 1000000) %>%
   group_by(YR) %>%
   mutate(TotAnValue = sum(value)) %>%
   mutate(Species = recode(Species,
                           "Dolphinfish (unspecified)" = "Mahimahi",
                           "Indo-Pacific blue marlin" = "Blue marlin",
-                          "Kawakawa, Little tuna" = "Kawakawa",
                           "Moonfish" = "Opah",
-                          "Shortbill/Shortnose spearfish" = "Shortbill spearfish",
-                          "Sickle pomfret" = "Pomfret",
-                          "Pacific/Giant black marlin, Silver marlin" = 
-                            "Black marlin, Silver marlin", 
-                          "Indo-Pacific sailfish" = "Sailfish",
-                          "Oilfish, Escolar (Spanish)" = "Escolar",
-                          "Squids (unspecified)" = "Squid (unspecified)")) %>%
-  mutate(totalvolume = sum(Volume)) %>%
-  mutate(percentvol = Volume / totalvolume * 100)
+                          "Sickle pomfret" = "Pomfret")) %>%
+  mutate(totalvolume = sum(Volume))
 
 
-#Create "Other" species group to visually display species composing less than 
-#2% of total landings volume each year
-#Annual_Landings_bySpecies_forplot$Species[Annual_Landings_bySpecies_forplot$percentvol < 2] <- "Other"
-
+#Expand color palette for bar chart
+cols <- 11
+extracolors <- colorRampPalette(brewer.pal(11, "Blues"))(cols)
 
 #Create stacked bar chart.
 Annual_Landings_bySpecies_plot_withvalue <- ggplot(Annual_Landings_bySpecies_forplot) +
@@ -173,7 +188,7 @@ Annual_Landings_bySpecies_plot_withvalue <- ggplot(Annual_Landings_bySpecies_for
   scale_y_continuous(expand = c(0, 0), limit = c(0, 45), labels = comma,
                      sec.axis = sec_axis(~ . * 3, name = "Total Revenue ($ million)",
                                          label = dollar_format())) +
-  scale_fill_manual(values = wes_palette("Zissou1", 19, type = "continuous")) +
+  scale_fill_manual(values = rev(extracolors)) +
   theme(legend.position = "right", legend.title = element_blank(), 
         legend.justification = "center", 
         text = element_text(size = 12, family = "serif"))
@@ -275,7 +290,7 @@ write.csv(ProdExp_Species, "Tables/ProdExp_bySpecies.csv")
 
 
 #--------------------
-#Table 4: Total PMUS export volume from Hawai'i (lb.). 
+#Table 4: Total PMUS export volume from Hawai'i (lb). 
 #--------------------
 #Create table.
 Export_by_SpeciesYear <- dat %>%
@@ -372,6 +387,10 @@ PelagicTrade <- dat %>%
   filter(YR > 2007) %>%
   filter(Trade == "E") %>%
   filter(grepl(TradeSpecies, Species, ignore.case = TRUE)) %>%
+  #Wrote additional code to look at annual trends:
+  select(Species, Country, YR, RDollars, cPounds, Price) %>%
+  group_by(YR, Species, Country) %>%
+  summarize(total = sum(cPounds)) 
   SpcCntyTrd_Tbl("PelagicTrade_Table")
 
 #Apologies, I am far too tired to fuss with species order and making them 
@@ -414,8 +433,7 @@ write.csv(Imp_Prod, "Tables/Imp_Prod.csv")
 
 
 #--------------------
-#Table 7. Average annual Hawai'i landings sold and imports of select PMUS, 
-#2008-2019. 
+#Table 7. Average annual Hawai'i landings sold and imports of PMUS, 2008-2019. 
 #--------------------
 #Create object for table.
 Pelagic_Prod_Species <- Landat %>%
@@ -478,7 +496,7 @@ write.csv(ProdImp_Species, "Tables/ProdImp_bySpecies.csv")
 
 
 #--------------------
-#Table 8: Total PMUS import volume to Hawai'i (in thousands of lbs.). 
+#Table 8: Total PMUS import volume to Hawai'i (in thousands of lb). 
 #--------------------
 #Create table.
 Imports_by_SpeciesYear <- dat %>%
@@ -551,8 +569,6 @@ write.csv(ImpShare_Species_byYear, "Tables/ImportShare_byspecies.csv")
 #--------------------
 #Figure 5: Total PMUS imports to Hawai'i.  
 #--------------------
-library(scales)
-
 #Create object for figure.
 Imp_Plot <- dat %>%
   filter(YR > 2007) %>%
@@ -591,9 +607,6 @@ save_plot("Figures/PelImports.png", Imp_ggPlot, base_aspect_ratio = 1.5)
 #--------------------
 #Figure 6: Total fresh import volume to Hawai'i.  
 #--------------------
-library("scales")
-library("wesanderson")
-
 #Create object for stacked bar chart.
 Fsh_Imp_Pelagic <- dat %>%
   filter(YR %in% c(2008:2019)) %>%
@@ -624,7 +637,7 @@ Fsh_Imp_Pelagic_gph <- ggplot(Fsh_Imp_Pelagic, aes(x = YR, y = Pounds / 1100000,
   scale_x_continuous(breaks = seq(2008, 2019, 1)) +
   scale_y_continuous(expand = c(0, 0), labels = comma) +
   coord_cartesian(ylim = c(0, 2.5)) +
-  scale_fill_manual(values = wes_palette("Zissou1", 9, type = "continuous")) +
+  scale_fill_brewer(palette = "Blues") +
   theme(legend.position = "right", legend.title = element_blank(),
         text = element_text(size = 11, family = "serif"))
 
@@ -665,7 +678,7 @@ Fzn_Imp_Pelagic_gph <- ggplot(Fzn_Imp_Pelagic, aes(x = YR, y = Pounds / 1000000,
   labs(x = "Year", y = "Total Pounds Imported (million lb.)") +
   scale_x_continuous(breaks = seq(2008, 2019, 1)) +
   scale_y_continuous(expand = c(0, 0), limit = c(0, 5.0), labels = comma) +
-  scale_fill_manual(values = wes_palette("Zissou1", 9, type = "continuous")) +
+  scale_fill_brewer(palette = "Blues") +
   theme(legend.position = "right", legend.title = element_blank(),
         text = element_text(size = 12, family = "serif")) +
   theme(panel.background = element_blank(),

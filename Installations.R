@@ -116,10 +116,18 @@ dat$cPounds <- ifelse(grepl("Bigeye tuna", dat$Species, ignore.case = TRUE)
                ifelse(dat$Product == "SHARK FINS DRIED", 
                              dat$Pounds * 1.00, 
                ifelse(dat$Product == "SHARK NSPF FRESH", 
-                                    dat$Pounds * 1.24, 
+                                    dat$Pounds * 1.24,
+              ifelse(dat$Product == "TUNA BLUEFIN ATLANTIC FROZEN", 
+                             dat$Pounds * 1.11,
+              ifelse(dat$Product == "TUNA BLUEFIN FROZEN", 
+                                    dat$Pounds * 1.17,
+              ifelse(dat$Product == "TUNA BLUEFIN PACIFIC FROZEN", 
+                            dat$Pounds * 1.18,
+              ifelse(dat$Product == "TUNA BLUEFIN SOUTHERN FROZEN", 
+                            dat$Pounds * 1.176,
                ifelse(!grepl(ConvertForms, dat$FormDesc, ignore.case = TRUE) 
                       & !grepl(ConvertSpecies, dat$Species, ignore.case = TRUE),
-                      dat$Pounds, dat$Pounds))))))))))))))))))))))))))))))))
+                      dat$Pounds, dat$Pounds))))))))))))))))))))))))))))))))))))
 
 
 #Coerce object to numeric.
